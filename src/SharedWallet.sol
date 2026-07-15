@@ -5,21 +5,26 @@ contract SharedWallet{
   address [] public owners; 
   uint16 public requiredApprovals; 
   mapping(address => bool) public isOwner;
+  
+  error InvalidOwnersRequirement();
+  error InvalidApprovalRequirement();
+  error InvalidOwnerAddress();
+  error DuplicatedOwnerError();
 
   constructor (address [] memory _owners, uint16 _requiredApprovals) {
-    require(_owners.length> 0, "At least one owner must exist. Currently - 0.");
-
-    require (
-      _owners.length >= _requiredApprovals &&
-      _requiredApprovals > 0, 
-      "Invalid Approval Requirement."
-    );
+    if(_owners.length == 0) { revert InvalidOwnersRequirement(); }
+  
+    if (
+      _owners.length < _requiredApprovals ||
+      _requiredApprovals <= 0
+    ) { revert InvalidApprovalRequirement(); }
 
     for (uint256 i = 0; i < _owners.length; i++) {
       address owner = _owners[i];
+      
+      if (owner == address(0)) {revert InvalidOwnerAddress(); }
 
-      require(owner != address(0), "Invalid Owner Address.");
-      require(!isOwner[owner], "Duplicated Owner."); // Check if the address is already added.
+      if(isOwner[owner]) { revert DuplicatedOwnerError(); }
       
       isOwner[owner] = true;
       owners.push(owner);
