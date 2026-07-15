@@ -5,7 +5,9 @@ import {Test} from "forge-std/Test.sol";
 import {SharedWallet} from "../src/SharedWallet.sol";
 
 contract TestSharedWallet is Test {
- 
+
+  // CONSTRUCTOR testing
+
   function testZeroApprovals(
     address [] memory _owners, 
     uint16 _requiredApprovals
@@ -22,5 +24,58 @@ contract TestSharedWallet is Test {
     
     SharedWallet wallet = new SharedWallet(_owners, _requiredApprovals);
   }
+  
+  function testNoAddressUser(
+    address [] memory _owners, 
+    uint16 _requiredApprovals
+  ) public {
+    vm.assume(_requiredApprovals > 0);
+    vm.assume(_owners.length > 0);
+    vm.assume(_owners.length >= _requiredApprovals);
 
+    for(uint256 i = 1; i < _owners.length; i++) {
+      vm.assume(_owners[i] != address(0));
+    }
+
+    _owners[0] = address(0);
+    
+    vm.expectRevert("Invalid Owner Address.");
+
+    SharedWallet wallet = new SharedWallet(_owners, _requiredApprovals);
+  }
+
+  
+  function testInvalidNumberOfRequiredApprovals(
+    address [] memory _owners, 
+    uint16 _requiredApprovals
+  ) public { 
+    vm.assume(_requiredApprovals > 0);
+    vm.assume(_owners.length > 0);
+    vm.assume(_owners.length < _requiredApprovals);
+
+    for(uint256 i = 0; i < _owners.length; i++) {
+      vm.assume(_owners[i] != address(0));
+    }
+
+    vm.expectRevert("Invalid Approval Requirement.");
+
+    SharedWallet wallet = new SharedWallet(_owners, _requiredApprovals);
+  }
+
+  function testZeroRequiredApprovals(
+    address [] memory _owners, 
+    uint16 _requiredApprovals
+  ) public { 
+    _requiredApprovals = 0;
+    vm.assume(_owners.length > 0);
+
+    for(uint256 i = 0; i < _owners.length; i++) {
+      vm.assume(_owners[i] != address(0));
+    }
+  
+    vm.expectRevert("Invalid Approval Requirement.");
+
+    SharedWallet wallet = new SharedWallet(_owners, _requiredApprovals);
+    
+  }
 }
