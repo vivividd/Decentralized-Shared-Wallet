@@ -30,5 +30,4 @@ contract SharedWallet{
 
     requiredApprovals = _requiredApprovals;
   }
-  
 }

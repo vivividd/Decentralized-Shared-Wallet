@@ -25,11 +25,42 @@ contract TestSharedWallet is Test {
     }
 
   function testZeroOwners(
-    address [] memory _owners, 
     uint16 _requiredApprovals) public {
+      address [] memory emptyOwners = new address [](0);
       vm.expectRevert(SharedWallet.InvalidOwnersRequirement.selector);
 
-      address [] emptyOwners = 
-      new SharedWallet(, _requiredApprovals);
+      new SharedWallet(emptyOwners, _requiredApprovals);
+  }
+  
+  function testZeroApprovals(
+    address [] memory _owners
+    ) public {
+      
+      vm.assume(_owners.length > 0);
+      for(uint256 i = 0; i < _owners.length; i++) {
+        vm.assume(_owners[i] != address(0)); 
+      }
+
+      vm.expectRevert(SharedWallet.InvalidApprovalRequirement.selector);
+
+      new SharedWallet(_owners, 0);
+  }
+
+  function testLessOwnersThanApprovals(
+    uint16 _requiredApprovals,
+    address [] memory _owners
+    ) public {
+      
+      vm.assume(_owners.length < _requiredApprovals);
+      vm.assume(_requiredApprovals > 0);
+
+      vm.assume(_owners.length > 0);
+      for(uint256 i = 0; i < _owners.length; i++) {
+        vm.assume(_owners[i] != address(0)); 
+      }
+
+      vm.expectRevert(SharedWallet.InvalidApprovalRequirement.selector);
+
+      new SharedWallet(_owners, 0);
   }
 }
