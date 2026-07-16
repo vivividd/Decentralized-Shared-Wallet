@@ -8,8 +8,6 @@ contract SharedWallet{
   
   error InvalidOwnersRequirement();
   error InvalidApprovalRequirement();
-  error InvalidOwnerAddress();
-  error DuplicatedOwnerError();
 
   constructor (address [] memory _owners, uint16 _requiredApprovals) {
     if(_owners.length == 0) { revert InvalidOwnersRequirement(); }
@@ -22,9 +20,9 @@ contract SharedWallet{
     for (uint256 i = 0; i < _owners.length; i++) {
       address owner = _owners[i];
       
-      if (owner == address(0)) {revert InvalidOwnerAddress(); }
+      if (owner == address(0)) {revert InvalidOwnersRequirement(); }
 
-      if(isOwner[owner]) { revert DuplicatedOwnerError(); }
+      if(isOwner[owner]) { revert InvalidOwnersRequirement(); }
       
       isOwner[owner] = true;
       owners.push(owner);
