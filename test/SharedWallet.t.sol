@@ -63,4 +63,23 @@ contract TestSharedWallet is Test {
 
       new SharedWallet(_owners, 0);
   }
+
+
+  function testDuplicatedOwners(
+    uint16 _requiredApprovals,
+    address [] memory _owners
+    ) public {
+      
+      vm.assume(_owners.length > 2);
+      vm.assume(_requiredApprovals >= 2);
+      vm.assume(_owners.length >= _requiredApprovals);
+
+      for(uint256 i = 0; i < _owners.length; i++) {
+        vm.assume(_owners[i] != address(0)); 
+      }
+      _owners[0] = _owners[1];
+      vm.expectRevert(SharedWallet.InvalidOwnersRequirement.selector);
+
+      new SharedWallet(_owners, _requiredApprovals);
+  }
 }
