@@ -14,6 +14,7 @@ contract TestSharedWallet is Test {
     address owner1 = address(0x1);
     address owner2 = address(0x2);
     address owner3 = address(0x3);
+    address owner4 = address(0x5);
     address recipient = address(0x4);
     SharedWallet wallet;
 
@@ -103,6 +104,26 @@ contract TestSharedWallet is Test {
         assertEq(approvalCount, 0);
     }
 
+    function testRejectsZeroRecipient() public {
+        vm.prank(owner1);
+        vm.expectRevert(SharedWallet.InvalidRecipient.selector);
+        wallet.submitTransaction(address(0), 0, "");
+    }
+
+    function testAcceptsDirectEthDeposit() public {
+        address[] memory freshWalletOwners = new address[](1);
+        freshWalletOwners[0] = owner1;
+        SharedWallet freshWallet = new SharedWallet(freshWalletOwners, 1);
+        address sender = address(0x99);
+        vm.deal(sender, 1 ether);
+
+        vm.prank(sender);
+        (bool success,) = address(freshWallet).call{value: 0.5 ether}("");
+
+        assertTrue(success);
+        assertEq(address(freshWallet).balance, 0.5 ether);
+    }
+
     function testNonOwnerCannotSubmitOrApprove() public {
         vm.prank(address(0x99));
         vm.expectRevert(SharedWallet.NotOwner.selector);
@@ -184,5 +205,96 @@ contract TestSharedWallet is Test {
 
         (,,, bool executedAfterFailure,) = wallet.transactions(0);
         assertFalse(executedAfterFailure);
+    }
+
+    function testReadHelpers() public {
+        vm.prank(owner1);
+        wallet.submitTransaction(recipient, 1 ether, "");
+        vm.prank(owner1);
+        wallet.approveTransaction(0);
+
+        address[] memory storedOwners = wallet.getOwners();
+        assertEq(storedOwners.length, 3);
+        assertEq(wallet.getTransactionCount(), 1);
+
+        address[] memory confirmations = wallet.getConfirmations(0);
+        assertEq(confirmations.length, 1);
+        assertEq(confirmations[0], owner1);
+    }
+
+    function testManagementCannotBeCalledDirectly() public {
+        vm.expectRevert(SharedWallet.OnlyWallet.selector);
+        wallet.addOwner(owner4);
+
+        vm.expectRevert(SharedWallet.OnlyWallet.selector);
+        wallet.changeRequirement(1);
+    }
+
+    function testCanAddOwnerThroughApprovedTransaction() public {
+        bytes memory data = abi.encodeCall(SharedWallet.addOwner, (owner4));
+        vm.prank(owner1);
+        wallet.submitTransaction(address(wallet), 0, data);
+        vm.prank(owner1);
+        wallet.approveTransaction(0);
+        vm.prank(owner2);
+        wallet.approveTransaction(0);
+
+        vm.prank(owner1);
+        wallet.executeTransaction(0);
+
+        assertTrue(wallet.isOwner(owner4));
+        assertEq(wallet.getOwners().length, 4);
+    }
+
+    function testCanChangeRequirementThroughApprovedTransaction() public {
+        bytes memory data = abi.encodeCall(SharedWallet.changeRequirement, (uint16(3)));
+        vm.prank(owner1);
+        wallet.submitTransaction(address(wallet), 0, data);
+        vm.prank(owner1);
+        wallet.approveTransaction(0);
+        vm.prank(owner2);
+        wallet.approveTransaction(0);
+
+        vm.prank(owner3);
+        wallet.approveTransaction(0);
+        vm.prank(owner1);
+        wallet.executeTransaction(0);
+
+        assertEq(wallet.requiredApprovals(), 3);
+    }
+
+    function testRemovingOwnerClearsTheirPendingApproval() public {
+        vm.prank(owner1);
+        wallet.submitTransaction(recipient, 1 ether, "");
+        vm.prank(owner2);
+        wallet.approveTransaction(0);
+        vm.prank(owner1);
+        wallet.approveTransaction(0);
+
+        bytes memory data = abi.encodeCall(SharedWallet.removeOwner, (owner2));
+        vm.prank(owner1);
+        wallet.submitTransaction(address(wallet), 0, data);
+        vm.prank(owner1);
+        wallet.approveTransaction(1);
+        vm.prank(owner3);
+        wallet.approveTransaction(1);
+
+        vm.prank(owner1);
+        wallet.executeTransaction(1);
+
+        assertFalse(wallet.isOwner(owner2));
+        assertEq(wallet.getOwners().length, 2);
+        (,,,, uint256 approvalCount) = wallet.transactions(0);
+        assertEq(approvalCount, 1);
+        assertEq(wallet.getConfirmations(0)[0], owner1);
+    }
+
+    function testCannotUseInvalidTransactionId() public {
+        vm.expectRevert(SharedWallet.TransactionDoesNotExist.selector);
+        wallet.getTransaction(0);
+
+        vm.prank(owner1);
+        vm.expectRevert(SharedWallet.TransactionDoesNotExist.selector);
+        wallet.approveTransaction(0);
     }
 }

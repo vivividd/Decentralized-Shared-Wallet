@@ -18,7 +18,13 @@ contract SharedWallet {
 
     error InvalidOwnersRequirement();
     error InvalidApprovalRequirement();
+    error InvalidOwner();
+    error OwnerAlreadyExists();
+    error OwnerDoesNotExist();
+    error CannotRemoveLastOwner();
+    error RequirementExceedsOwnerCount();
     error NotOwner();
+    error OnlyWallet();
     error InvalidRecipient();
     error TransactionDoesNotExist();
     error TransactionAlreadyExecuted();
@@ -32,9 +38,17 @@ contract SharedWallet {
     event TransactionApproved(uint256 indexed transactionId, address indexed owner);
     event TransactionApprovalRevoked(uint256 indexed transactionId, address indexed owner);
     event TransactionExecuted(uint256 indexed transactionId);
+    event OwnerAdded(address indexed owner);
+    event OwnerRemoved(address indexed owner);
+    event RequirementChanged(uint16 requiredApprovals);
 
     modifier onlyOwner() {
         if (!isOwner[msg.sender]) revert NotOwner();
+        _;
+    }
+
+    modifier onlyWallet() {
+        if (msg.sender != address(this)) revert OnlyWallet();
         _;
     }
 
@@ -123,5 +137,83 @@ contract SharedWallet {
         if (!success) revert TransactionExecutionFailed();
 
         emit TransactionExecuted(transactionId);
+    }
+
+    // These administration functions must be called through an approved wallet transaction.
+    function addOwner(address owner) external onlyWallet {
+        if (owner == address(0)) revert InvalidOwner();
+        if (isOwner[owner]) revert OwnerAlreadyExists();
+
+        isOwner[owner] = true;
+        owners.push(owner);
+        emit OwnerAdded(owner);
+    }
+
+    function removeOwner(address owner) external onlyWallet {
+        if (!isOwner[owner]) revert OwnerDoesNotExist();
+        if (owners.length == 1) revert CannotRemoveLastOwner();
+        if (requiredApprovals > owners.length - 1) revert RequirementExceedsOwnerCount();
+
+        isOwner[owner] = false;
+        for (uint256 i = 0; i < owners.length; i++) {
+            if (owners[i] == owner) {
+                owners[i] = owners[owners.length - 1];
+                owners.pop();
+                break;
+            }
+        }
+
+        // A removed owner must no longer count toward pending transactions.
+        for (uint256 i = 0; i < transactions.length; i++) {
+            if (!transactions[i].executed && approved[i][owner]) {
+                approved[i][owner] = false;
+                transactions[i].approvalCount--;
+            }
+        }
+
+        emit OwnerRemoved(owner);
+    }
+
+    function changeRequirement(uint16 newRequiredApprovals) external onlyWallet {
+        if (newRequiredApprovals == 0) revert InvalidApprovalRequirement();
+        if (newRequiredApprovals > owners.length) revert RequirementExceedsOwnerCount();
+
+        requiredApprovals = newRequiredApprovals;
+        emit RequirementChanged(newRequiredApprovals);
+    }
+
+    function getOwners() external view returns (address[] memory) {
+        return owners;
+    }
+
+    function getTransactionCount() external view returns (uint256) {
+        return transactions.length;
+    }
+
+    function getTransaction(uint256 transactionId)
+        external
+        view
+        transactionExists(transactionId)
+        returns (Transaction memory)
+    {
+        return transactions[transactionId];
+    }
+
+    function getConfirmations(uint256 transactionId)
+        external
+        view
+        transactionExists(transactionId)
+        returns (address[] memory confirmations)
+    {
+        uint256 confirmationCount;
+        for (uint256 i = 0; i < owners.length; i++) {
+            if (approved[transactionId][owners[i]]) confirmationCount++;
+        }
+
+        confirmations = new address[](confirmationCount);
+        uint256 index;
+        for (uint256 i = 0; i < owners.length; i++) {
+            if (approved[transactionId][owners[i]]) confirmations[index++] = owners[i];
+        }
     }
 }

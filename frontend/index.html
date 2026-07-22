@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shared Wallet</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">MULTISIG WALLET</p>
+          <h1>Shared Wallet</h1>
+        </div>
+        <button id="connectButton" class="button primary">Connect wallet</button>
+      </header>
+
+      <section class="panel setup">
+        <label for="walletAddress">Deployed wallet address</label>
+        <div class="inline">
+          <input id="walletAddress" placeholder="0x..." spellcheck="false" />
+          <button id="loadButton" class="button">Load wallet</button>
+        </div>
+        <p class="hint">Connect an owner wallet, paste the deployed SharedWallet address, then load it.</p>
+      </section>
+
+      <div id="status" class="status" role="status">Not connected.</div>
+
+      <section id="walletSection" class="hidden">
+        <div class="summary">
+          <div class="metric"><span>Balance</span><strong id="balance">—</strong></div>
+          <div class="metric"><span>Approvals</span><strong id="threshold">—</strong></div>
+          <div class="metric"><span>Owners</span><strong id="ownerCount">—</strong></div>
+          <div class="metric"><span>Connected account</span><strong id="account">—</strong></div>
+        </div>
+
+        <section class="panel">
+          <div class="section-heading"><h2>New transaction</h2><span>ETH or contract call</span></div>
+          <form id="transactionForm" class="form-grid">
+            <label>Recipient<input id="recipient" required placeholder="0x..." spellcheck="false" /></label>
+            <label>Value (ETH)<input id="value" required value="0" inputmode="decimal" /></label>
+            <label class="wide">Calldata (optional)<input id="data" value="0x" spellcheck="false" placeholder="0x" /></label>
+            <button class="button primary" type="submit">Submit transaction</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><h2>Wallet administration</h2><span>Creates self-transactions</span></div>
+          <div class="form-grid admin-grid">
+            <form id="addOwnerForm"><label>Add owner<input id="newOwner" required placeholder="0x..." spellcheck="false" /></label><button class="button" type="submit">Propose</button></form>
+            <form id="removeOwnerForm"><label>Remove owner<input id="removeOwner" required placeholder="0x..." spellcheck="false" /></label><button class="button" type="submit">Propose</button></form>
+            <form id="requirementForm"><label>Required approvals<input id="newRequirement" required type="number" min="1" step="1" /></label><button class="button" type="submit">Propose</button></form>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><h2>Transactions</h2><button id="refreshButton" class="button small">Refresh</button></div>
+          <div id="transactions" class="transactions"><p class="hint">No transactions yet.</p></div>
+        </section>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
